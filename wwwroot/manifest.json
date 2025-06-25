@@ -1,0 +1,32 @@
+{
+  "name": "我的 PWA 應用程式",
+  "short_name": "我的 PWA",
+  "description": "這是一個使用 .NET 建立的 PWA 範例應用程式。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/images/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/icon-144x144.png",
+      "sizes": "128x128 144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/icon-192x192.png",
+      "sizes": "192x192 256x256",
+      "type": "image/png"
+    }
+  ],
+  "prefer_related_applications": false
+}

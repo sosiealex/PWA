@@ -1,0 +1,123 @@
+﻿@{
+    Layout = "_Layout";
+    ViewData["Title"] = "ID";
+}
+
+<h1>ID</h1>
+
+<div class="center-btn">
+    <button id="registerButton" class="btn btn-primary large-btn">註冊指紋</button>
+</div>
+<div class="center-btn">
+    <button id="authenticateButton" class="btn btn-success large-btn">認證指紋</button>
+</div>
+<div id="status" class="large-text"></div>
+
+
+
+
+<script>
+    // Helper function to convert base64url to ArrayBuffer
+    function bufferDecode(value) {
+        return Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+    }
+
+    // Helper function to convert ArrayBuffer to base64url
+    // We'll need this to store the credential ID
+    function bufferEncode(value) {
+        return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+    }
+
+    const statusEl = document.getElementById('status');
+    const registerButton = document.getElementById('registerButton');
+    const authenticateButton = document.getElementById('authenticateButton');
+
+    // Check for WebAuthn support
+    if (!window.PublicKeyCredential) {
+        statusEl.textContent = '此瀏覽器不支援 Web Authentication API。';
+        registerButton.disabled = true;
+        authenticateButton.disabled = true;
+    } else {
+        registerButton.addEventListener('click', async () => {
+            try {
+                statusEl.textContent = '正在註冊指紋...';
+
+                // In a real application, these values should come from your server.
+                const challenge = new Uint8Array(32);
+                window.crypto.getRandomValues(challenge); // Generate a random challenge
+                const userId = new Uint8Array(16);
+                window.crypto.getRandomValues(userId); // Generate a random user ID for demo
+
+                const publicKeyCredentialCreationOptions = {
+                    challenge: challenge,
+                    rp: {
+                        name: "My PWA App",
+                        id: location.hostname, // Use current domain
+                    },
+                    user: {
+                        id: userId,
+                        name: "user@example.com",
+                        displayName: "Test User",
+                    },
+                    pubKeyCredParams: [{ alg: -7, type: "public-key" }], // ES256
+                    authenticatorSelection: {
+                        authenticatorAttachment: "platform", // Use platform authenticator (e.g., fingerprint, face)
+                        userVerification: "required",
+                    },
+                    timeout: 60000,
+                    attestation: "direct"
+                };
+
+                const newCredential = await navigator.credentials.create({
+                    publicKey: publicKeyCredentialCreationOptions
+                });
+
+                // In a real app, send newCredential to the server for verification and storage.
+                // For this demo, we'll just store the ID in localStorage.
+                // 註冊時存 rawId
+                const credentialId = bufferEncode(newCredential.rawId);
+                localStorage.setItem('webauthn-credential-id', credentialId);
+
+                statusEl.textContent = '註冊成功'
+
+            } catch (err) {
+                statusEl.textContent = '註冊失敗: ' + err;
+            }
+        });
+
+        authenticateButton.addEventListener('click', async () => {
+            try {
+                const storedCredentialId = localStorage.getItem('webauthn-credential-id');
+                if (!storedCredentialId) {
+                    statusEl.textContent = '請先註冊指紋。';
+                    return;
+                }
+                const credentialIdBuffer = bufferDecode(storedCredentialId);
+
+                statusEl.textContent = '請使用指紋進行認證...';
+
+                // Challenge should come from the server
+                const challenge = new Uint8Array(32);
+                window.crypto.getRandomValues(challenge);
+
+                const publicKey = {
+                    challenge: challenge,
+                    allowCredentials: [{
+                        id: credentialIdBuffer,
+                        type: 'public-key',
+                    }],
+                    userVerification: "required"
+                };
+                await navigator.credentials.get({ publicKey });
+                // In a real app, send the assertion to the server for verification.
+                statusEl.textContent = '指紋認證成功！';
+
+            } catch (err) {
+                statusEl.textContent = '認證失敗: ' + err;
+            }
+        });
+    }
+</script>

@@ -1,0 +1,129 @@
+﻿@{  
+    Layout = "_Layout";  
+    ViewData["Title"] = "Home Page";  
+}  
+
+<button id="installButton">安裝到我的裝置</button>
+<div id="messageBox" class="message-box"></div>
+
+<script>
+    let deferredPrompt; // 儲存安裝事件
+    const installButton = document.getElementById('installButton');
+    const messageBox = document.getElementById('messageBox');
+
+    // 檢查應用程式是否已安裝或正在以獨立模式運行
+    function checkPWAInstalledStatus() {
+        if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone || !deferredPrompt) {
+            installButton.style.display = 'none';
+            showMessage('應用程式已安裝並以獨立模式運行。', 'info');
+            console.log('應用程式已安裝並以獨立模式運行，隱藏安裝按鈕。');
+            return true;
+        }
+           
+        return false;
+    }
+    // 監聽 beforeinstallprompt 事件
+    // 當瀏覽器判斷網站可以被安裝為 PWA 時，此事件會觸發
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // 阻止預設的安裝提示 (如果您想自行控制提示時間)
+        e.preventDefault();
+        // 儲存事件，以便稍後觸發
+        deferredPrompt = e;
+        // 只有在應用程式未以獨立模式運行時才顯示安裝按鈕
+        if (!checkPWAInstalledStatus()) {
+            installButton.style.display = 'block';
+        }
+        console.log('beforeinstallprompt 事件已觸發。按鈕現在可見。');
+    });
+
+    // 處理安裝按鈕的點擊事件
+    installButton.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            // 隱藏按鈕，因為提示即將出現
+            installButton.style.display = 'none';
+            // 顯示安裝提示
+            showMessage('正在顯示安裝提示...', 'info');
+            deferredPrompt.prompt();
+            // 等待使用者響應提示
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`使用者選擇: ${outcome}`);
+
+            if (outcome === 'accepted') {
+                showMessage('應用程式已成功安裝！', 'success');
+                console.log('使用者接受了安裝提示。');
+            } else {
+                showMessage('應用程式安裝已被取消。', 'warning');
+                console.log('使用者拒絕了安裝提示。');
+            }
+            // 安裝提示只能使用一次，因此清除 deferredPrompt
+            deferredPrompt = null;
+        } else {
+            showMessage('無法觸發安裝。這可能是因為應用程式已經安裝，或不符合安裝條件。', 'error');
+            console.log('deferredPrompt 為空。');
+        }
+    });
+
+    // 監聽 appinstalled 事件
+    // 當 PWA 成功安裝後觸發
+    window.addEventListener('appinstalled', () => {
+        installButton.style.display = 'none'; // 安裝後隱藏按鈕
+        showMessage('恭喜！應用程式已安裝並準備好使用。', 'success');
+        console.log('PWA 已成功安裝！');
+    });
+
+    // 顯示訊息的輔助函數
+    function showMessage(message, type) {
+        messageBox.textContent = message;
+        messageBox.className = 'message-box show'; // 確保顯示
+        if (type === 'success') {
+            messageBox.style.backgroundColor = '#d4edda'; // 淺綠
+            messageBox.style.color = '#155724'; // 深綠
+        } else if (type === 'error') {
+            messageBox.style.backgroundColor = '#f8d7da'; // 淺紅
+            messageBox.style.color = '#721c24'; // 深紅
+        } else if (type === 'warning') {
+            messageBox.style.backgroundColor = '#fff3cd'; // 淺黃
+            messageBox.style.color = '#856404'; // 深黃
+        } else { // info
+            messageBox.style.backgroundColor = '#e0f2f7'; // 淺藍
+            messageBox.style.color = '#0288d1'; // 深藍
+        }
+
+        // 一段時間後自動隱藏訊息
+        setTimeout(() => {
+            messageBox.classList.remove('show');
+        }, 5000);
+    }
+
+    // 檢查 Service Worker 支援並註冊
+    if ('serviceWorker' in navigator) {
+        // Service Worker 必須透過 http: 或 https: 協定運行。
+        // 在 'blob:' 或 'file:' 等環境下不支援。
+        if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+            window.addEventListener('load', () => {
+                checkPWAInstalledStatus(); // 在頁面載入時檢查並隱藏按鈕，如果應用程式已經安裝
+                // 構建 Service Worker 腳本的絕對 URL，以確保在不同環境下都能正確解析。
+                const serviceWorkerUrl = new URL('/service-worker.js', window.location.href).href;
+                navigator.serviceWorker.register(serviceWorkerUrl)
+                    .then(registration => {
+                        console.log('Service Worker 註冊成功，範圍:', registration.scope);
+                    })
+                    .catch(err => {
+                        console.error('Service Worker 註冊失敗:', err);
+                        // 提供更具體的錯誤訊息，特別是針對協定或路徑問題
+                        if (err.message && (err.message.includes('The URL protocol of the script') || err.message.includes('A bad HTTP response code'))) {
+                             showMessage('Service Worker 註冊失敗：瀏覽器環境不支援或路徑錯誤。請確認網站透過 HTTPS 運行，且 service-worker.js 檔案存在。', 'error');
+                        } else {
+                            showMessage('Service Worker 註冊失敗，離線功能可能無法使用。', 'error');
+                        }
+                    });
+            });
+        } else {
+            console.warn(`目前協議 (${window.location.protocol}) 不支援 Service Worker。`);
+            showMessage(`Service Worker 在當前環境 (${window.location.protocol}) 不受支援，PWA 功能將受限。請將應用程式部署到網路伺服器並透過 HTTPS 訪問。`, 'warning');
+        }
+    } else {
+        console.warn('您的瀏覽器不支援 Service Worker。PWA 功能將受限。');
+        showMessage('您的瀏覽器不支援 Service Worker，因此無法體驗完整的 PWA 功能。', 'warning');
+    }
+</script>

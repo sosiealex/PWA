@@ -1,0 +1,49 @@
+﻿@{
+    Layout = "_Layout";
+    ViewData["Title"] = "GPS";
+}
+
+<h1>GPS</h1>
+
+
+<div class="center-btn">
+    <button id="getLocationBtn" type="button" class="btn btn-primary large-btn">取得 GPS 位置</button>
+</div>
+<div id="gpsResult" class="large-text"></div>
+
+
+@section Scripts {
+    <script>
+        document.getElementById('getLocationBtn').addEventListener('click', function () {
+            var resultDiv = document.getElementById('gpsResult');
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function (position) {
+                        resultDiv.textContent = `經度: ${position.coords.longitude}, 緯度: ${position.coords.latitude}`;
+                    },
+                    function (error) {
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                resultDiv.textContent = "使用者拒絕提供位置資訊。";
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                resultDiv.textContent = "無法取得位置資訊。";
+                                break;
+                            case error.TIMEOUT:
+                                resultDiv.textContent = "取得位置逾時。";
+                                break;
+                            default:
+                                resultDiv.textContent = "發生未知錯誤。";
+                                break;
+                        }
+                        resultDiv.style.color = "red";
+                    }
+                );
+            } else {
+                resultDiv.textContent = "瀏覽器不支援地理位置功能。";
+                resultDiv.style.color = "red";
+            }
+        });
+    </script>
+}
+

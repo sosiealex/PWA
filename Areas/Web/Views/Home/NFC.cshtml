@@ -1,0 +1,39 @@
+﻿@{
+    Layout = "_Layout";
+    ViewData["Title"] = "NFC";
+}
+
+<h1>NFC</h1>
+
+<div class="center-btn">
+    <button id="scanButton" type="button" class="btn btn-primary large-btn">SCAN</button>
+</div>
+<div id="nfc-status" class="large-text" ></div>
+<div id="nfc-content"  class="large-text" ></div>
+
+<script>
+      scanButton.addEventListener("click", async () => {
+        const status = document.getElementById('nfc-status');
+        const content = document.getElementById('nfc-content');
+        if ('NDEFReader' in window) {
+            status.textContent = '請將 NFC 標籤靠近裝置...';
+            try {
+                await navigator.permissions.query({ name: "nfc" });
+                const ndef = new NDEFReader();
+                await ndef.scan();
+                ndef.addEventListener("reading", ({ message, serialNumber }) => {
+                     let result = `Serial Number: ${serialNumber}`;
+                     content.textContent = result || '無資料';
+                });
+                ndef.onreadingerror = () => {
+                    status.textContent = '讀取失敗，請再試一次。';
+                };
+            } catch (err) {
+                status.textContent = 'NFC 失敗：' + err;
+            }
+        } else {
+            status.textContent = '此瀏覽器不支援 Web NFC。';
+        }
+    });
+</script>
+

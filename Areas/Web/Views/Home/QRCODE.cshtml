@@ -1,0 +1,53 @@
+﻿@{
+    Layout = "_Layout";
+    ViewData["Title"] = "QRCODE";
+}
+
+<h1>QRCODE</h1>
+
+<div class="center-btn">
+    <button id="scan-btn" class="btn btn-primary large-btn" type="button">掃描 QRCode</button>
+</div>
+<div class="center-btn">
+    <div id="qr-reader" style="width:300px; display:none;"></div>
+</div>
+
+<div>
+    <strong>掃描結果：</strong>
+    <span id="qr-result" class="large-text"></span>
+</div>
+
+<!-- 引入 html5-qrcode CDN -->
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+    const scanBtn = document.getElementById('scan-btn');
+    const qrReader = document.getElementById('qr-reader');
+    const qrResult = document.getElementById('qr-result');
+    let html5QrCode;
+
+    scanBtn.addEventListener('click', function () {
+        qrReader.style.display = 'block';
+        qrResult.textContent = '';
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("qr-reader");
+        }
+        html5QrCode.start(
+            { facingMode: "environment" },
+            {
+                fps: 10,
+                qrbox: 250
+            },
+            qrCodeMessage => {
+                qrResult.textContent = qrCodeMessage;
+                html5QrCode.stop();
+                qrReader.style.display = 'none';
+            },
+            errorMessage => {
+                // 可選：處理掃描錯誤
+            }
+        ).catch(err => {
+            qrResult.textContent = "無法啟動相機：" + err;
+        });
+    });
+</script>
+
